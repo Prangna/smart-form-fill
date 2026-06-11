@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Form Fill — Rathore's Academy</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --ink:       #1a1a2e;
+      --primary:   #2d6a4f;
+      --primary-d: #1b4332;
+      --accent:    #b7410e;
+      --bg:        #f5f7f2;
+      --card:      #ffffff;
+      --border:    #d8e4d0;
+      --muted:     #6b7c6b;
+      --success:   #2d6a4f;
+      --warn:      #b7410e;
+      --radius:    10px;
+      --shadow:    0 2px 16px rgba(0,0,0,0.07);
+    }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: var(--primary-d);
+      color: white;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .logo { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+    .logo span { color: #95d5b2; }
+    .tagline { font-size: 12px; opacity: 0.75; margin-top: 2px; }
+    .by { font-size: 11px; opacity: 0.6; }
+
+    /* ── MAIN ── */
+    main { max-width: 860px; margin: 0 auto; padding: 28px 16px 60px; }
+
+    /* ── STEPPER ── */
+    .stepper {
+      display: flex;
+      gap: 0;
+      margin-bottom: 28px;
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .step {
+      flex: 1;
+      padding: 14px 10px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted);
+      border-right: 1px solid var(--border);
+      transition: background 0.2s, color 0.2s;
+      cursor: default;
+    }
+    .step:last-child { border-right: none; }
+    .step .step-num {
+      display: block;
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--border);
+      margin-bottom: 3px;
+      transition: color 0.2s;
+    }
+    .step.active { background: #eaf4ee; color: var(--primary-d); }
+    .step.active .step-num { color: var(--primary); }
+    .step.done { background: var(--primary-d); color: white; }
+    .step.done .step-num { color: #95d5b2; }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .card-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--primary-d);
+      margin-bottom: 4px;
+    }
+    .card-sub {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 18px;
+    }
+
+    /* ── UPLOAD ZONE ── */
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 36px 20px;
+      text-align: center;
+      cursor: pointer;
+      position: relative;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .upload-zone:hover, .upload-zone.drag { border-color: var(--primary); background: #f0f7f2; }
+    .upload-zone input[type=file] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .upload-icon { font-size: 36px; margin-bottom: 10px; }
+    .upload-zone p { font-size: 13px; color: var(--muted); margin: 3px 0; }
+    .upload-zone strong { color: var(--ink); }
+    .upload-chip {
+      display: inline-block;
+      background: #eaf4ee;
+      color: var(--primary-d);
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 20px;
+      margin-top: 8px;
+    }
+
+    .file-preview {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: #eaf4ee;
+      border-radius: 8px;
+      margin-top: 12px;
+    }
+    .file-preview-icon { font-size: 24px; }
+    .file-preview-name { font-size: 13px; font-weight: bold; color: var(--primary-d); }
+    .file-preview-size { font-size: 11px; color: var(--muted); }
+    .file-preview-remove {
+      margin-left: auto;
+      background: none; border: none; cursor: pointer;
+      font-size: 16px; color: var(--muted); padding: 4px;
+    }
+    .file-preview-remove:hover { color: var(--accent); }
+
+    /* ── BUTTONS ── */
+    .btn-primary {
+      width: 100%; padding: 13px;
+      background: var(--primary);
+      color: white; border: none;
+      border-radius: 8px;
+      font-size: 14px; font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 14px;
+    }
+    .btn-primary:hover:not(:disabled) { background: var(--primary-d); }
+    .btn-primary:disabled { background: #aaa; cursor: not-allowed; }
+
+    .btn-accent {
+      width: 100%; padding: 13px;
+      background: var(--accent);
+      color: white; border: none;
+      border-radius: 8px;
+      font-size: 14px; font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 10px;
+    }
+    .btn-accent:hover:not(:disabled) { background: #8b2f08; }
+    .btn-accent:disabled { background: #aaa; cursor: not-allowed; }
+
+    .btn-outline {
+      padding: 9px 18px;
+      background: none;
+      border: 1.5px solid var(--primary);
+      color: var(--primary);
+      border-radius: 8px;
+      font-size: 13px; font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+    .btn-outline:hover { background: var(--primary); color: white; }
+
+    /* ── PROGRESS ── */
+    .progress-wrap { display: none; margin-top: 14px; }
+    .progress-bg { background: var(--border); border-radius: 4px; height: 6px; overflow: hidden; }
+    .progress-bar {
+      height: 100%; background: var(--primary);
+      border-radius: 4px; width: 0%;
+      transition: width 0.4s ease;
+    }
+    .progress-msg { font-size: 12px; color: var(--muted); margin-top: 6px; text-align: center; }
+
+    /* ── STATUS ── */
+    .status-line {
+      font-size: 12px; color: var(--muted);
+      margin-top: 8px; min-height: 18px;
+    }
+    .status-line.ok  { color: var(--success); font-weight: 600; }
+    .status-line.err { color: var(--warn); }
+
+    /* ── ERROR BOX ── */
+    .error-box {
+      display: none;
+      margin-top: 12px;
+      padding: 12px;
+      background: #fff5f5;
+      border: 1px solid #ffcccc;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #c0392b;
+    }
+
+    /* ── FORM PREVIEW ── */
+    .form-frame-wrap { display: none; }
+    .frame-actions {
+      display: flex; gap: 10px; margin-bottom: 12px;
+      align-items: center; flex-wrap: wrap;
+    }
+    .frame-actions h2 { font-size: 15px; color: var(--primary-d); margin-right: auto; }
+    .form-iframe {
+      width: 100%; height: 620px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: white;
+    }
+    .convert-again {
+      margin-top: 12px;
+      font-size: 13px; color: var(--muted);
+      cursor: pointer; background: none; border: none;
+      font-family: inherit; text-decoration: underline;
+    }
+    .convert-again:hover { color: var(--ink); }
+
+    /* ── MAPPING TABLE ── */
+    .mapping-table {
+      width: 100%; border-collapse: collapse;
+      font-size: 12px; margin-top: 12px;
+    }
+    .mapping-table th {
+      background: var(--primary-d); color: white;
+      padding: 8px 10px; text-align: left;
+      font-weight: 600;
+    }
+    .mapping-table th:first-child { border-radius: 6px 0 0 0; }
+    .mapping-table th:last-child  { border-radius: 0 6px 0 0; }
+    .mapping-table td { padding: 7px 10px; border-bottom: 1px solid var(--border); }
+    .mapping-table tr:nth-child(even) td { background: #f8fbf6; }
+    .mapped-yes { color: var(--success); font-weight: 600; }
+    .mapped-no  { color: #bbb; font-style: italic; }
+
+    /* ── STUDENT SELECTOR ── */
+    .student-select {
+      width: 100%; padding: 10px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px; font-family: inherit;
+      color: var(--ink); background: white;
+      cursor: pointer; outline: none;
+      transition: border-color 0.2s;
+    }
+    .student-select:focus { border-color: var(--primary); }
+
+    /* ── CGPA DISPLAY ── */
+    .cgpa-row {
+      display: none;
+      align-items: center; gap: 10px;
+      margin-top: 12px;
+      padding: 10px 14px;
+      background: #eaf4ee;
+      border-radius: 8px;
+    }
+    .cgpa-label { font-size: 13px; color: var(--muted); }
+    .cgpa-badge {
+      background: var(--primary-d); color: white;
+      padding: 4px 14px; border-radius: 20px;
+      font-size: 15px; font-weight: 800;
+    }
+    .cgpa-note { font-size: 11px; color: var(--muted); }
+
+    /* ── SUBJECT GRID ── */
+    .subject-grid {
+      display: none;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .subject-chip {
+      background: #f5f7f2;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 7px 10px;
+      font-size: 11px;
+    }
+    .subject-chip .subj-name { color: var(--muted); margin-bottom: 2px; }
+    .subject-chip .subj-grade {
+      font-weight: 800; font-size: 14px;
+      color: var(--primary-d);
+    }
+    .subject-chip .subj-gp { color: var(--muted); font-size: 10px; }
+
+    /* ── FOOTER ── */
+    footer {
+      text-align: center; font-size: 11px;
+      color: var(--muted); padding: 20px;
+      border-top: 1px solid var(--border);
+    }
+    footer a { color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">Smart <span>Form Fill</span></div>
+    <div class="tagline">Proforma → Editable Form → Auto-fill from Excel</div>
+  </div>
+  <div class="by">by Rathore's Academy</div>
+</header>
+
+<main>
+
+  <!-- STEPPER -->
+  <div class="stepper" id="stepper">
+    <div class="step active" id="step1">
+      <span class="step-num">1</span>Upload Proforma
+    </div>
+    <div class="step" id="step2">
+      <span class="step-num">2</span>Upload Excel
+    </div>
+    <div class="step" id="step3">
+      <span class="step-num">3</span>Map Fields
+    </div>
+    <div class="step" id="step4">
+      <span class="step-num">4</span>Fill &amp; Print
+    </div>
+  </div>
+
+  <!-- STEP 1: Upload Proforma -->
+  <div class="card" id="cardProforma">
+    <div class="card-title">📄 Upload your school proforma</div>
+    <div class="card-sub">Any report card, admit card, fee receipt, attendance sheet — image or PDF</div>
+
+    <div class="upload-zone" id="proformaZone">
+      <input type="file" id="proformaInput" accept=".png,.jpg,.jpeg,.webp,.pdf" />
+      <div class="upload-icon">📋</div>
+      <p><strong>Click to upload or drag &amp; drop</strong></p>
+      <p>Proforma image or PDF</p>
+      <span class="upload-chip">PNG · JPG · WEBP · PDF &nbsp;|&nbsp; Max 16MB</span>
+    </div>
+
+    <div class="file-preview" id="proformaPreview">
+      <span class="file-preview-icon">📋</span>
+      <div>
+        <div class="file-preview-name" id="proformaName"></div>
+        <div class="file-preview-size" id="proformaSize"></div>
+      </div>
+      <button class="file-preview-remove" id="proformaRemove" title="Remove">✕</button>
+    </div>
+
+    <div class="progress-wrap" id="proformaProgress">
+      <div class="progress-bg"><div class="progress-bar" id="proformaBar"></div></div>
+      <div class="progress-msg" id="proformaMsg">Reading your proforma...</div>
+    </div>
+
+    <div class="error-box" id="proformaError"></div>
+
+    <button class="btn-primary" id="convertBtn" disabled>✨ Convert to Editable Form</button>
+  </div>
+
+  <!-- STEP 2: Form Preview + Excel Upload -->
+  <div class="card form-frame-wrap" id="cardForm">
+    <div class="frame-actions">
+      <h2>✅ Editable form ready</h2>
+      <button class="btn-outline" id="printBtn">🖨️ Print</button>
+      <button class="btn-outline" id="downloadBtn">⬇️ Download</button>
+    </div>
+    <iframe class="form-iframe" id="formFrame" title="Generated Form"></iframe>
+    <button class="convert-again" id="convertAgain">↩ Start over with a different proforma</button>
+  </div>
+
+  <!-- STEP 2: Excel Upload -->
+  <div class="card" id="cardExcel" style="display:none">
+    <div class="card-title">📊 Upload your student data sheet</div>
+    <div class="card-sub">Any Excel or CSV with student records — column names don't need to match exactly, AI will figure it out</div>
+
+    <div class="upload-zone" id="excelZone">
+      <input type="file" id="excelInput" accept=".xlsx,.xls,.csv" />
+      <div class="upload-icon">📊</div>
+      <p><strong>Click to upload Excel or CSV</strong></p>
+      <p>Your student data — any column format</p>
+      <span class="upload-chip">XLSX · XLS · CSV</span>
+    </div>
+
+    <div class="file-preview" id="excelPreview">
+      <span class="file-preview-icon">📊</span>
+      <div>
+        <div class="file-preview-name" id="excelFileName"></div>
+        <div class="file-preview-size" id="excelRowCount"></div>
+      </div>
+      <button class="file-preview-remove" id="excelRemove" title="Remove">✕</button>
+    </div>
+
+    <div class="status-line" id="excelStatus"></div>
+  </div>
+
+  <!-- STEP 3: Field Mapping -->
+  <div class="card" id="cardMapping" style="display:none">
+    <div class="card-title">🔗 AI Column Mapping</div>
+    <div class="card-sub">Groq matched your Excel columns to form fields</div>
+    <div class="status-line" id="mappingStatus"></div>
+    <div id="mappingTableWrap"></div>
+  </div>
+
+  <!-- STEP 4: Student Select + Fill -->
+  <div class="card" id="cardFill" style="display:none">
+    <div class="card-title">👤 Select student &amp; auto-fill</div>
+    <div class="card-sub">Choose a student — the form fills automatically</div>
+
+    <select class="student-select" id="studentSelect">
+      <option value="">— Choose a student —</option>
+    </select>
+
+    <div class="cgpa-row" id="cgpaRow">
+      <span class="cgpa-label">CGPA</span>
+      <span class="cgpa-badge" id="cgpaValue">—</span>
+      <span class="cgpa-note">(Best 5 subjects · CBSE 9-point scale)</span>
+    </div>
+
+    <div id="subjectGridWrap"></div>
+
+    <button class="btn-accent" id="fillBtn" disabled>✏️ Auto-Fill Form</button>
+    <div class="status-line" id="fillStatus"></div>
+  </div>
+
+</main>
+
+<footer>
+  Built with ❤️ by <a href="https://rathoresacademy.wordpress.com" target="_blank">Rathore's Academy</a>
+  &nbsp;|&nbsp; Free tool for Indian teachers
+</footer>
+
+<script>
+  // ── STATE ──
+  let generatedHTML = '';
+  let excelData = { headers: [], rows: [] };
+  let fieldMapping = {};
+  let subjectColumns = [];
+  let studentNameCol = '';
+
+  // ── ELEMENTS ──
+  const proformaInput  = document.getElementById('proformaInput');
+  const proformaZone   = document.getElementById('proformaZone');
+  const proformaPreview= document.getElementById('proformaPreview');
+  const proformaName   = document.getElementById('proformaName');
+  const proformaSize   = document.getElementById('proformaSize');
+  const proformaRemove = document.getElementById('proformaRemove');
+  const proformaProgress = document.getElementById('proformaProgress');
+  const proformaBar    = document.getElementById('proformaBar');
+  const proformaMsg    = document.getElementById('proformaMsg');
+  const proformaError  = document.getElementById('proformaError');
+  const convertBtn     = document.getElementById('convertBtn');
+
+  const cardForm       = document.getElementById('cardForm');
+  const formFrame      = document.getElementById('formFrame');
+  const printBtn       = document.getElementById('printBtn');
+  const downloadBtn    = document.getElementById('downloadBtn');
+  const convertAgain   = document.getElementById('convertAgain');
+
+  const cardExcel      = document.getElementById('cardExcel');
+  const excelInput     = document.getElementById('excelInput');
+  const excelPreview   = document.getElementById('excelPreview');
+  const excelFileName  = document.getElementById('excelFileName');
+  const excelRowCount  = document.getElementById('excelRowCount');
+  const excelRemove    = document.getElementById('excelRemove');
+  const excelStatus    = document.getElementById('excelStatus');
+
+  const cardMapping    = document.getElementById('cardMapping');
+  const mappingStatus  = document.getElementById('mappingStatus');
+  const mappingTableWrap = document.getElementById('mappingTableWrap');
+
+  const cardFill       = document.getElementById('cardFill');
+  const studentSelect  = document.getElementById('studentSelect');
+  const cgpaRow        = document.getElementById('cgpaRow');
+  const cgpaValue      = document.getElementById('cgpaValue');
+  const subjectGridWrap= document.getElementById('subjectGridWrap');
+  const fillBtn        = document.getElementById('fillBtn');
+  const fillStatus     = document.getElementById('fillStatus');
+
+  // ── STEP HELPERS ──
+  function setStep(n) {
+    for (let i = 1; i <= 4; i++) {
+      const el = document.getElementById('step' + i);
+      el.classList.remove('active', 'done');
+      if (i < n)  el.classList.add('done');
+      if (i === n) el.classList.add('active');
+    }
+  }
+
+  function setStatus(el, msg, type) {
+    el.textContent = msg;
+    el.className = 'status-line' + (type ? ' ' + type : '');
+  }
+
+  function showError(el, msg) {
+    el.textContent = msg;
+    el.style.display = msg ? 'block' : 'none';
+  }
+
+  // ── PROFORMA UPLOAD ──
+  proformaInput.addEventListener('change', () => {
+    const file = proformaInput.files[0];
+    if (!file) return;
+    proformaName.textContent = file.name;
+    proformaSize.textContent = (file.size / 1024).toFixed(0) + ' KB';
+    proformaPreview.style.display = 'flex';
+    proformaZone.style.display = 'none';
+    convertBtn.disabled = false;
+    showError(proformaError, '');
+  });
+
+  proformaRemove.addEventListener('click', () => {
+    proformaInput.value = '';
+    proformaPreview.style.display = 'none';
+    proformaZone.style.display = '';
+    convertBtn.disabled = true;
+  });
+
+  // Drag & drop
+  proformaZone.addEventListener('dragover', e => { e.preventDefault(); proformaZone.classList.add('drag'); });
+  proformaZone.addEventListener('dragleave', () => proformaZone.classList.remove('drag'));
+  proformaZone.addEventListener('drop', e => {
+    e.preventDefault();
+    proformaZone.classList.remove('drag');
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      proformaInput.files = dt.files;
+      proformaInput.dispatchEvent(new Event('change'));
+    }
+  });
+
+  // ── CONVERT ──
+  convertBtn.addEventListener('click', async () => {
+    const file = proformaInput.files[0];
+    if (!file) return;
+
+    convertBtn.disabled = true;
+    proformaProgress.style.display = 'block';
+    showError(proformaError, '');
+
+    const messages = [
+      'Reading your proforma...', 'Detecting fields and layout...',
+      'Generating editable form...', 'Almost done...'
+    ];
+    let mi = 0;
+    let pct = 10;
+    proformaMsg.textContent = messages[0];
+    proformaBar.style.width = '10%';
+
+    const interval = setInterval(() => {
+      pct = Math.min(pct + 15, 85);
+      proformaBar.style.width = pct + '%';
+      mi = Math.min(mi + 1, messages.length - 1);
+      proformaMsg.textContent = messages[mi];
+    }, 2000);
+
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const resp = await fetch('/convert', { method: 'POST', body: fd });
+      const data = await resp.json();
+      if (data.error) throw new Error(data.error);
+
+      clearInterval(interval);
+      proformaBar.style.width = '100%';
+      proformaMsg.textContent = 'Done!';
+
+      generatedHTML = data.html;
+
+      setTimeout(() => {
+        proformaProgress.style.display = 'none';
+        document.getElementById('cardProforma').style.display = 'none';
+        cardForm.style.display = 'block';
+        formFrame.srcdoc = generatedHTML;
+        cardExcel.style.display = 'block';
+        setStep(2);
+        cardForm.scrollIntoView({ behavior: 'smooth' });
+      }, 500);
+
+    } catch(e) {
+      clearInterval(interval);
+      proformaProgress.style.display = 'none';
+      convertBtn.disabled = false;
+      showError(proformaError, '⚠️ ' + e.message);
+    }
+  });
+
+  // ── PRINT / DOWNLOAD ──
+  printBtn.addEventListener('click', () => {
+    formFrame.contentWindow.print();
+  });
+
+  downloadBtn.addEventListener('click', () => {
+    const blob = new Blob([generatedHTML], { type: 'text/html' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'form.html';
+    a.click();
+  });
+
+  // ── CONVERT AGAIN ──
+  convertAgain.addEventListener('click', () => {
+    // Reset everything
+    generatedHTML = '';
+    excelData = { headers: [], rows: [] };
+    fieldMapping = {};
+    subjectColumns = [];
+    proformaInput.value = '';
+    proformaPreview.style.display = 'none';
+    proformaZone.style.display = '';
+    convertBtn.disabled = true;
+    document.getElementById('cardProforma').style.display = 'block';
+    cardForm.style.display = 'none';
+    cardExcel.style.display = 'none';
+    cardMapping.style.display = 'none';
+    cardFill.style.display = 'none';
+    excelInput.value = '';
+    excelPreview.style.display = 'none';
+    excelZone.style.display = '';
+    mappingTableWrap.innerHTML = '';
+    studentSelect.innerHTML = '<option value="">— Choose a student —</option>';
+    cgpaRow.style.display = 'none';
+    subjectGridWrap.innerHTML = '';
+    fillBtn.disabled = true;
+    setStep(1);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  // ── EXCEL UPLOAD ──
+  excelInput.addEventListener('change', async () => {
+    const file = excelInput.files[0];
+    if (!file) return;
+
+    setStatus(excelStatus, 'Reading file...', '');
+    const fd = new FormData();
+    fd.append('file', file);
+
+    try {
+      const resp = await fetch('/parse-excel', { method: 'POST', body: fd });
+      const data = await resp.json();
+      if (data.error) throw new Error(data.error);
+
+      excelData = data;
+      excelFileName.textContent = file.name;
+      excelRowCount.textContent = data.total + ' students · ' + data.headers.length + ' columns';
+      excelPreview.style.display = 'flex';
+      excelZone.style.display = 'none';
+      setStatus(excelStatus, '✅ File loaded successfully', 'ok');
+      setStep(3);
+
+      await runMapping();
+
+    } catch(e) {
+      setStatus(excelStatus, '⚠️ ' + e.message, 'err');
+    }
+  });
+
+  excelRemove.addEventListener('click', () => {
+    excelInput.value = '';
+    excelPreview.style.display = 'none';
+    excelZone.style.display = '';
+    setStatus(excelStatus, '', '');
+    cardMapping.style.display = 'none';
+    cardFill.style.display = 'none';
+    setStep(2);
+  });
+
+  // ── EXTRACT FORM FIELDS from iframe ──
+  function extractFormFields() {
+    try {
+      const doc = formFrame.contentDocument || formFrame.contentWindow.document;
+      const inputs = doc.querySelectorAll('input[name], input[id], textarea[name], textarea[id], select[name], select[id]');
+      const fields = new Set();
+      inputs.forEach(el => {
+        if (el.name && el.name.length > 1) fields.add(el.name);
+        else if (el.id && el.id.length > 1) fields.add(el.id);
+      });
+      return [...fields];
+    } catch(e) {
+      return [];
+    }
+  }
+
+  // ── FIELD MAPPING ──
+  async function runMapping() {
+    cardMapping.style.display = 'block';
+    setStatus(mappingStatus, '⏳ AI is mapping your columns to form fields...', '');
+    mappingTableWrap.innerHTML = '';
+    cardMapping.scrollIntoView({ behavior: 'smooth' });
+
+    // Wait a tick for iframe to settle
+    await new Promise(r => setTimeout(r, 400));
+    const formFields = extractFormFields();
+
+    try {
+      const resp = await fetch('/map-fields', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ excel_headers: excelData.headers, form_fields: formFields })
+      });
+      const data = await resp.json();
+      if (data.error) throw new Error(data.error);
+
+      fieldMapping   = data.mapping || {};
+      subjectColumns = data.subject_columns || [];
+      studentNameCol = data.student_name_column || excelData.headers[0];
+
+      const mapped = Object.values(fieldMapping).filter(Boolean).length;
+      setStatus(mappingStatus, `✅ ${mapped} of ${formFields.length} fields mapped`, 'ok');
+
+      // Render mapping table
+      let html = '<table class="mapping-table"><thead><tr><th>Form Field</th><th>Excel Column</th></tr></thead><tbody>';
+      formFields.forEach(f => {
+        const col = fieldMapping[f];
+        html += `<tr><td>${f}</td><td class="${col ? 'mapped-yes' : 'mapped-no'}">${col ? '✓ ' + col : '— not mapped'}</td></tr>`;
+      });
+      if (subjectColumns.length) {
+        html += `<tr><td colspan="2" style="background:#eaf4ee;color:#1b4332;font-size:11px;padding:6px 10px">
+          🎓 Subject columns for CGPA: ${subjectColumns.join(', ')}</td></tr>`;
+      }
+      html += '</tbody></table>';
+      mappingTableWrap.innerHTML = html;
+
+      // Populate dropdown
+      populateStudents();
+      cardFill.style.display = 'block';
+      setStep(4);
+
+    } catch(e) {
+      setStatus(mappingStatus, '⚠️ ' + e.message, 'err');
+    }
+  }
+
+  function populateStudents() {
+    studentSelect.innerHTML = '<option value="">— Choose a student —</option>';
+    excelData.rows.forEach((row, i) => {
+      const label = row[studentNameCol] || ('Student ' + (i + 1));
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = label;
+      studentSelect.appendChild(opt);
+    });
+    fillBtn.disabled = true;
+    cgpaRow.style.display = 'none';
+    subjectGridWrap.innerHTML = '';
+  }
+
+  // ── STUDENT SELECTION ──
+  studentSelect.addEventListener('change', async () => {
+    if (studentSelect.value === '') {
+      fillBtn.disabled = true;
+      cgpaRow.style.display = 'none';
+      subjectGridWrap.innerHTML = '';
+      return;
+    }
+    fillBtn.disabled = false;
+    const row = excelData.rows[parseInt(studentSelect.value)];
+
+    if (subjectColumns.length > 0) {
+      try {
+        const resp = await fetch('/calc-cgpa', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ student_row: row, subject_columns: subjectColumns })
+        });
+        const data = await resp.json();
+        if (data.cgpa !== null && data.cgpa !== undefined) {
+          cgpaValue.textContent = data.cgpa;
+          cgpaRow.style.display = 'flex';
+
+          // Subject grid
+          const details = data.subject_details || {};
+          if (Object.keys(details).length) {
+            let g = '<div class="subject-grid">';
+            Object.entries(details).forEach(([subj, d]) => {
+              g += `<div class="subject-chip">
+                <div class="subj-name">${subj}</div>
+                <div class="subj-grade">${d.grade}</div>
+                <div class="subj-gp">${d.grade_point} pts · ${d.marks}</div>
+              </div>`;
+            });
+            g += '</div>';
+            subjectGridWrap.innerHTML = g;
+          }
+        }
+      } catch(e) { /* silent */ }
+    }
+  });
+
+  // ── AUTO-FILL ──
+  fillBtn.addEventListener('click', async () => {
+    const idx = parseInt(studentSelect.value);
+    if (isNaN(idx)) return;
+    const row = excelData.rows[idx];
+
+    fillBtn.disabled = true;
+    setStatus(fillStatus, 'Filling form...', '');
+
+    try {
+      const doc = formFrame.contentDocument || formFrame.contentWindow.document;
+      let filled = 0;
+
+      // Fill mapped fields
+      Object.entries(fieldMapping).forEach(([field, excelCol]) => {
+        if (!excelCol) return;
+        const val = row[excelCol];
+        if (!val) return;
+
+        let el = doc.querySelector(`[name="${CSS.escape(field)}"]`)
+               || doc.querySelector(`#${CSS.escape(field)}`)
+               || doc.querySelector(`[placeholder="${field}"]`);
+        if (el) {
+          el.value = val;
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+          filled++;
+        }
+      });
+
+      // Fill CGPA field if present
+      if (subjectColumns.length > 0) {
+        const cgpaResp = await fetch('/calc-cgpa', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ student_row: row, subject_columns: subjectColumns })
+        });
+        const cgpaData = await cgpaResp.json();
+        if (cgpaData.cgpa) {
+          const cgpaEl = doc.querySelector(
+            '[name*="cgpa" i], [id*="cgpa" i], [name*="CGPA"], [id*="CGPA"]'
+          );
+          if (cgpaEl) { cgpaEl.value = cgpaData.cgpa; filled++; }
+        }
+      }
+
+      setStatus(fillStatus, `✅ ${filled} fields filled — review, edit, then print!`, 'ok');
+      formFrame.scrollIntoView({ behavior: 'smooth' });
+
+    } catch(e) {
+      setStatus(fillStatus, '⚠️ ' + e.message, 'err');
+    }
+    fillBtn.disabled = false;
+  });
+</script>
+</body>
+</html>
