@@ -882,11 +882,10 @@
         Object.entries(filledMarksEls).forEach(([excelCol, marksEl]) => {
           const detail = details[excelCol];
           if (!detail) return;
-
           const tr = marksEl.closest('tr');
           if (!tr) return;
-
           const candidates = tr.querySelectorAll('input, select');
+          let filledViaInput = false;
           for (const cand of candidates) {
             if (cand === marksEl) continue;
             if (cand.disabled || cand.readOnly) continue;
@@ -894,7 +893,28 @@
             cand.dispatchEvent(new Event('input', { bubbles: true }));
             cand.dispatchEvent(new Event('change', { bubbles: true }));
             filled++;
+            filledViaInput = true;
             break;
+          }
+          if (!filledViaInput) {
+            const table = tr.closest('table');
+            if (table) {
+              const headerCells = table.querySelectorAll('thead th, tr:first-child th, tr:first-child td');
+              let gradeColIdx = -1;
+              headerCells.forEach((th, i) => {
+                if (/grade/i.test(th.textContent)) gradeColIdx = i;
+              });
+              if (gradeColIdx >= 0) {
+                const cells = tr.querySelectorAll('td, th');
+                const targetCell = cells[gradeColIdx];
+                if (targetCell && !targetCell.querySelector('input, select')) {
+                  targetCell.textContent = detail.grade;
+                  targetCell.style.fontWeight = 'bold';
+                  targetCell.style.textAlign = 'center';
+                  filled++;
+                }
+              }
+            }
           }
         });
       }
