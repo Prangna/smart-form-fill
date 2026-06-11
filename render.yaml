@@ -3,7 +3,7 @@ services:
     name: smart-form-fill
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app
+    startCommand: startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
     envVars:
       - key: GROQ_API_KEY
         sync: false
