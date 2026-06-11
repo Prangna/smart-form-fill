@@ -115,8 +115,6 @@ def convert():
             media_type = "image/jpeg"
         else:
             # Resize if too large
-           else:
-            # Resize if too large
             img = Image.open(io.BytesIO(file_bytes))
             if img.mode in ("RGBA", "LA", "P"):
                 bg = Image.new("RGB", img.size, (255, 255, 255))
