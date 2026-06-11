@@ -111,7 +111,72 @@
       padding: 10px 14px; line-height: 1.6;
     }
     .help-note strong { color: var(--primary-d); }
-
+    /* ── HELP / HOW-TO ── */
+    .help-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    .help-toggle {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 14px 20px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--primary-d);
+      text-align: left;
+    }
+    .help-toggle:hover { background: #f8fbf6; }
+    .help-toggle .chevron {
+      transition: transform 0.2s;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .help-card.open .chevron { transform: rotate(180deg); }
+    .help-body {
+      display: none;
+      padding: 0 20px 18px;
+    }
+    .help-card.open .help-body { display: block; }
+    .help-steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .help-step {
+      background: #f8fbf6;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+    .help-step .hs-num {
+      display: inline-flex;
+      align-items: center; justify-content: center;
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: white;
+      font-size: 11px; font-weight: 700;
+      margin-right: 6px;
+    }
+    .help-step .hs-title { font-size: 13px; font-weight: 700; color: var(--ink); }
+    .help-step p { font-size: 12px; color: var(--muted); margin-top: 5px; line-height: 1.5; }
+    .help-note {
+      font-size: 12px; color: var(--muted);
+      background: #eaf4ee; border-radius: 8px;
+      padding: 10px 14px; line-height: 1.6;
+    }
+    .help-note strong { color: var(--primary-d); }
     /* ── STEPPER ── */
     .stepper {
       display: flex;
@@ -392,9 +457,7 @@
   <div class="by">by Rathore's Academy</div>
 </header>
 
-<main>
-
-  <!-- STEPPER -->
+ <!-- STEPPER -->
   <div class="stepper" id="stepper">
     <div class="step active" id="step1">
       <span class="step-num">1</span>Upload Proforma
@@ -515,7 +578,13 @@
 </footer>
 
 <script>
-  
+  // ── HELP TOGGLE ──
+  const helpToggle = document.getElementById('helpToggle');
+  if (helpToggle) {
+    helpToggle.addEventListener('click', () => {
+      document.getElementById('helpCard').classList.toggle('open');
+    });
+  }  
   // ── STATE ──
   let generatedHTML = '';
   let excelData = { headers: [], rows: [] };
