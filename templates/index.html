@@ -808,6 +808,23 @@
   });
 
   // ── AUTO-FILL ──
+  // Convert various date formats to YYYY-MM-DD for <input type="date">
+  function toDateInputValue(val) {
+    const s = String(val).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    let m = s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
+    if (m) {
+      const [, d, mo, y] = m;
+      return `${y}-${mo.padStart(2,'0')}-${d.padStart(2,'0')}`;
+    }
+    m = s.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
+    if (m) {
+      const [, y, mo, d] = m;
+      return `${y}-${mo.padStart(2,'0')}-${d.padStart(2,'0')}`;
+    }
+    return null;
+  }
+
   fillBtn.addEventListener('click', async () => {
     const idx = parseInt(studentSelect.value);
     if (isNaN(idx)) return;
@@ -819,25 +836,33 @@
     try {
       const doc = formFrame.contentDocument || formFrame.contentWindow.document;
       let filled = 0;
+      const filledMarksEls = {};
 
-      // Fill mapped fields
       Object.entries(fieldMapping).forEach(([field, excelCol]) => {
         if (!excelCol) return;
         const val = row[excelCol];
-        if (!val) return;
+        if (!val && val !== 0) return;
 
         let el = doc.querySelector(`[name="${CSS.escape(field)}"]`)
                || doc.querySelector(`#${CSS.escape(field)}`)
                || doc.querySelector(`[placeholder="${field}"]`);
-        if (el) {
+        if (!el) return;
+
+        if (el.type === 'date') {
+          const iso = toDateInputValue(val);
+          if (iso) { el.value = iso; filled++; }
+        } else {
           el.value = val;
-          el.dispatchEvent(new Event('input', { bubbles: true }));
-          el.dispatchEvent(new Event('change', { bubbles: true }));
           filled++;
+        }
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+
+        if (subjectColumns.includes(excelCol)) {
+          filledMarksEls[excelCol] = el;
         }
       });
 
-      // Fill CGPA field if present
       if (subjectColumns.length > 0) {
         const cgpaResp = await fetch('/calc-cgpa', {
           method: 'POST',
@@ -845,12 +870,33 @@
           body: JSON.stringify({ student_row: row, subject_columns: subjectColumns })
         });
         const cgpaData = await cgpaResp.json();
+
         if (cgpaData.cgpa) {
           const cgpaEl = doc.querySelector(
             '[name*="cgpa" i], [id*="cgpa" i], [name*="CGPA"], [id*="CGPA"]'
           );
           if (cgpaEl) { cgpaEl.value = cgpaData.cgpa; filled++; }
         }
+
+        const details = cgpaData.subject_details || {};
+        Object.entries(filledMarksEls).forEach(([excelCol, marksEl]) => {
+          const detail = details[excelCol];
+          if (!detail) return;
+
+          const tr = marksEl.closest('tr');
+          if (!tr) return;
+
+          const candidates = tr.querySelectorAll('input, select');
+          for (const cand of candidates) {
+            if (cand === marksEl) continue;
+            if (cand.disabled || cand.readOnly) continue;
+            cand.value = detail.grade;
+            cand.dispatchEvent(new Event('input', { bubbles: true }));
+            cand.dispatchEvent(new Event('change', { bubbles: true }));
+            filled++;
+            break;
+          }
+        });
       }
 
       setStatus(fillStatus, `✅ ${filled} fields filled — review, edit, then print!`, 'ok');
@@ -860,7 +906,6 @@
       setStatus(fillStatus, '⚠️ ' + e.message, 'err');
     }
     fillBtn.disabled = false;
-  });
-</script>
+  });</script>
 </body>
 </html>
