@@ -13,7 +13,7 @@ import pandas as pd
 
 app = Flask(__name__)
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
-MODEL = "meta-llama/llama-4-maverick-17b-128e-instruct"
+MODEL = "qwen/qwen3.8-27b"
 
 # ──────────────────────────────────────────────
 # DB INIT
