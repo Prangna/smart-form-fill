@@ -13,7 +13,7 @@ from datetime import datetime
 app = Flask(__name__)
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 VISION_MODEL = "qwen/qwen3.8-27b"        # for reading images
-TEXT_MODEL   = "llama-3.3-70b-versatile"  # for generating HTML/text
+TEXT_MODEL = "openai/gpt-oss-20b"
 
 # ──────────────────────────────────────────────
 # DB INIT
