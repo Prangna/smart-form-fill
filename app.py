@@ -9,6 +9,7 @@ import fitz  # PyMuPDF
 import io
 import psycopg2
 from datetime import datetime
+import pandas as pd
 
 app = Flask(__name__)
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
