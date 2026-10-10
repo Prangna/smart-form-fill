@@ -155,7 +155,7 @@ The HTML must start with <!DOCTYPE html> and be fully self-contained with inline
                     {"type": "text", "text": prompt}
                 ]
             }],
-            max_tokens=4096,
+            max_tokens=900,
             temperature=0.1
         )
 
