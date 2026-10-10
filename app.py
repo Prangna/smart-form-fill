@@ -13,8 +13,8 @@ import pandas as pd
 
 app = Flask(__name__)
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
-VISION_MODEL = "qwen/qwen3.8-27b"        # for reading images
-TEXT_MODEL = "openai/gpt-oss-20b"
+VISION_MODEL = "qwen/qwen3.8-27b"         # for reading images
+TEXT_MODEL   = "openai/gpt-oss-20b"       # for generating HTML/text/JSON
 
 # ──────────────────────────────────────────────
 # DB INIT
@@ -33,14 +33,6 @@ def init_db():
                 created_at TIMESTAMP DEFAULT NOW()
             )
         """)
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS feedback (
-                id SERIAL PRIMARY KEY,
-                name TEXT,
-                message TEXT,
-                created_at TIMESTAMP DEFAULT NOW()
-            )
-        """)
         conn.commit()
         cur.close()
         conn.close()
@@ -48,6 +40,51 @@ def init_db():
         print("DB init error:", e)
 
 init_db()
+
+# ──────────────────────────────────────────────
+# CBSE GRADING
+# ──────────────────────────────────────────────
+CBSE_GRADE_POINTS = {
+    'A1': 10, 'A2': 9, 'B1': 8, 'B2': 7,
+    'C1': 6,  'C2': 5, 'D':  4, 'E1': 3, 'E2': 2
+}
+
+def marks_to_grade(marks):
+    try:
+        m = float(marks)
+        if m >= 91: return 'A1'
+        if m >= 81: return 'A2'
+        if m >= 71: return 'B1'
+        if m >= 61: return 'B2'
+        if m >= 51: return 'C1'
+        if m >= 41: return 'C2'
+        if m >= 33: return 'D'
+        if m >= 21: return 'E1'
+        return 'E2'
+    except:
+        return ''
+
+def grade_to_points(grade):
+    if isinstance(grade, str):
+        return CBSE_GRADE_POINTS.get(grade.strip().upper(), 0)
+    return 0
+
+def calc_cgpa(subject_marks_dict):
+    points = []
+    for subj, val in subject_marks_dict.items():
+        if val is None or str(val).strip() == '':
+            continue
+        gp = grade_to_points(str(val))
+        if gp == 0:
+            grade = marks_to_grade(val)
+            gp = grade_to_points(grade)
+        if gp > 0:
+            points.append(gp)
+    if not points:
+        return None
+    top5 = sorted(points, reverse=True)[:5]
+    return round(sum(top5) / len(top5), 2)
+
 
 # ──────────────────────────────────────────────
 # ROUTES
@@ -77,7 +114,6 @@ def convert():
             media_type = "image/jpeg"
         else:
             img = Image.open(io.BytesIO(file_bytes))
-            # Convert RGBA/palette/other modes to RGB
             if img.mode in ("RGBA", "LA", "P"):
                 bg = Image.new("RGB", img.size, (255, 255, 255))
                 if img.mode == "P":
@@ -136,7 +172,6 @@ Rules:
         try:
             form_structure = json.loads(raw_json)
         except json.JSONDecodeError:
-            # If JSON parsing fails, fall back to direct HTML generation
             form_structure = None
 
         # STEP 2 — Text model generates full HTML from structure
@@ -157,8 +192,7 @@ Generate a complete, self-contained HTML document that:
 
 Return ONLY the complete HTML document — no explanation, no markdown fences."""
         else:
-            # Fallback: direct prompt without structure
-            html_prompt = f"""Generate a complete editable HTML form for a school proforma.
+            html_prompt = """Generate a complete editable HTML form for a school proforma.
 The form should have common school fields: student name, roll number, class, father name, mother name, date of birth, subjects table with marks and grades, CGPA, attendance, remarks.
 Make it clean, print-friendly with green/white theme, Arial font.
 Include a Print button. Start with <!DOCTYPE html>. Return ONLY HTML."""
@@ -191,36 +225,115 @@ Include a Print button. Start with <!DOCTYPE html>. Return ONLY HTML."""
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/feedback", methods=["POST"])
-def feedback():
+@app.route("/parse-excel", methods=["POST"])
+def parse_excel():
+    if "file" not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+    file = request.files["file"]
+    filename = file.filename.lower()
+    try:
+        if filename.endswith(".csv"):
+            df = pd.read_csv(file, dtype=str)
+        elif filename.endswith((".xlsx", ".xls")):
+            df = pd.read_excel(file, dtype=str)
+        else:
+            return jsonify({"error": "Please upload .xlsx, .xls or .csv"}), 400
+
+        df = df.dropna(how='all')
+        df.columns = [str(c).strip() for c in df.columns]
+        df = df.fillna('')
+
+        return jsonify({
+            "headers": list(df.columns),
+            "rows": df.to_dict(orient='records'),
+            "total": len(df)
+        })
+    except Exception as e:
+        return jsonify({"error": f"Could not read file: {str(e)}"}), 500
+
+
+@app.route("/map-fields", methods=["POST"])
+def map_fields():
     data = request.get_json()
-    name = data.get("name", "Anonymous")
-    message = data.get("message", "")
-    try:
-        conn = get_db()
-        cur = conn.cursor()
-        cur.execute("INSERT INTO feedback (name, message) VALUES (%s, %s)", (name, message))
-        conn.commit()
-        cur.close()
-        conn.close()
-        return jsonify({"success": True})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    excel_headers = data.get("excel_headers", [])
+    form_fields = data.get("form_fields", [])
 
+    if not excel_headers:
+        return jsonify({"error": "No Excel headers provided"}), 400
 
-@app.route("/admin/feedback")
-def admin_feedback():
+    prompt = f"""You are helping auto-fill a school proforma form from an Excel/CSV sheet.
+
+EXCEL COLUMNS available: {json.dumps(excel_headers)}
+
+FORM FIELDS to fill: {json.dumps(form_fields)}
+
+Your job:
+1. Map each FORM FIELD to the most likely EXCEL COLUMN that contains its data.
+2. Use fuzzy/semantic matching: "Pupil Name"→"Student Name", "Roll No"→"Roll Number", "Eng"→"English", etc.
+3. Identify which Excel columns contain SUBJECT MARKS or GRADES (for CGPA calculation).
+4. Identify which column is the STUDENT NAME identifier for the dropdown.
+5. Identify which column is the ROLL NUMBER (if present).
+
+Respond ONLY with valid JSON (no markdown, no explanation):
+{{
+  "mapping": {{
+    "<form_field_name>": "<excel_column_name_or_null>"
+  }},
+  "subject_columns": ["col1", "col2"],
+  "student_name_column": "<column_name>",
+  "roll_column": "<column_name_or_null>"
+}}
+
+Rules:
+- If no good match for a form field, use null
+- subject_columns = all columns that look like subject marks/grades"""
+
     try:
-        conn = get_db()
-        cur = conn.cursor()
-        cur.execute("SELECT name, message, created_at FROM feedback ORDER BY created_at DESC")
-        rows = cur.fetchall()
-        cur.close()
-        conn.close()
-        result = [{"name": r[0], "message": r[1], "time": str(r[2])} for r in rows]
+        response = client.chat.completions.create(
+            model=TEXT_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=1500,
+            temperature=0.1
+        )
+        raw = response.choices[0].message.content.strip()
+        raw = re.sub(r'^```[a-z]*\n?', '', raw)
+        raw = re.sub(r'\n?```$', '', raw)
+        result = json.loads(raw)
         return jsonify(result)
+    except json.JSONDecodeError as e:
+        return jsonify({"error": f"Could not parse AI response: {str(e)}"}), 500
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/calc-cgpa", methods=["POST"])
+def calc_cgpa_route():
+    data = request.get_json()
+    student_row = data.get("student_row", {})
+    subject_columns = data.get("subject_columns", [])
+
+    subject_data = {col: student_row.get(col, '') for col in subject_columns}
+    cgpa = calc_cgpa(subject_data)
+
+    subject_details = {}
+    for subj, val in subject_data.items():
+        if val and str(val).strip():
+            v = str(val).strip()
+            if v.replace('.', '').isdigit():
+                grade = marks_to_grade(float(v))
+            else:
+                grade = v.upper()
+            gp = grade_to_points(grade)
+            subject_details[subj] = {
+                "marks": val,
+                "grade": grade,
+                "grade_point": gp
+            }
+
+    return jsonify({
+        "cgpa": cgpa,
+        "subject_details": subject_details
+    })
 
 
 if __name__ == "__main__":
